@@ -1,0 +1,118 @@
+Setting up the environment - create linux style env, create and set up python project, add jupyter support and run the notebook
+-------------------------------------------------------------------------------------------------------------------------------
+we will use uv tools to set up the environment:
+uv is a modern package manager created by the same team behind Ruff (a popular Python linter). It is designed to be:
+Extremely fast (written in Rust, not Python)
+Smarter at resolving dependency conflicts (like the terraform-compliance error you saw earlier)
+Easier for managing projects long-term
+
+1. install WSL (Windows Subsystem for Linux ) first
+
+wsl --install
+
+This will:
+Install WSL 2
+Install Ubuntu (a Linux distribution)
+Ask you to restart your computer - After restart, Ubuntu will open and ask you to create a username and password (this is different from your Windows account).
+
+                
+2. Open your WSL terminal (Ubuntu)
+Search for "Ubuntu" in your Windows Start menu
+Click to open it — you will see a purple/black terminal
+                
+if you dont see ubuntu (sometimes ubunto is not installed) - Open Command Prompt or PowerShell and run 
+wsl --list --online     (to see what distributions are available)
+This will show you a list of all Linux distributions you can install
+
+You should see ubuntu in the list 
+Run this to install ubuntu
+wsl --install -d Ubuntu
+When it opens for the first time, it will ask you to create a Linux username and password
+
+3. Install uv from ubuntu terminal
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+4. Create a project directory(dev/projects) and initialise the project - claude-demo
+cd ~
+mkdir -p dev/projects
+cd dev/projects
+uv init claude-demo
+cd claude-demo
+
+5. Install Jupyter support
+uv add --dev ipykernel
+
+6. create the isolated kernel ((Replace yourusername with the username you created in Step 1)
+uv run python -m ipykernel install --user --name claude-python3 --display-name "Claude Python 3"
+
+
+7. Create your notebook folder inside the project and start Jupyter
+mkdir jupyter
+cd jupyter
+uv run --with jupyter jupyter lab
+
+you will see something like
+http://localhost:8888/lab?token=xxxxxxxxxxxxxxxxxxxxx
+Hold Ctrl + Click on that link, and Jupyter Lab will open in your browser! 
+
+Stop the notebook server: do ctrl + C in ubuntu terninal to stop the jupyter engine
+start the notebook: goto ubunto, navigate to project > jupyter, start the engine - uv run --with jupyter jupyter lab     
+
+8. Run jupyter in vs code
+Stop Jupyter by pressing Ctrl + C and typing y
+Type this command: code .   (his tells Windows: "Open VS Code right here in this folder inside Linux.)
+
+Once VS Code opens, it might ask you to install the "WSL" extension or "Python" extension. Click Install on any pop-ups it shows you. 
+Specifically, make sure you have these in the Extensions view (the icon looks like 4 squares on the left):
+Python
+Jupyter
+On the left side of VS Code, you will see your file list. Click on your renamed notebook. It will open up looking very similar to the browser version.
+
+Select the "Brain" (Kernel)
+In the top-right corner of VS Code, you will see a button that says Select Kernel. Click it.
+Select Python Environments...
+Look for the one that mentions your project folder and says (.venv) next to it.
+Select that one.
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+The below work would be done inside the notebook
+
+Create a .env File
+In Jupyter Lab in your browser, look at the left sidebar. You should see a folder icon at the top. Make sure you can see your file list.
+Create a New File
+Right-click in the empty space of the file list on the left
+Select New File
+Name it .env (including the dot at the start — this is important!)
+Press Enter
+
+Note: In Linux (which is what your Ubuntu app is running), any file that starts with a dot (like .env) is automatically considered a "hidden" file. 
+Jupyter Lab's file browser gets confused when you try to name a visible file into a hidden one. In that case
+create this file directly from inside your notebook.
+
+Open your notebook. Click on a new, empty cell.
+Type 
+%%writefile .env
+ANTHROPIC_API_KEY=your-api-key-here  (Replace your-api-key-here with "your-api-key-here")
+and run
+
+How to actually see the .env file in the left sidebar
+Because it's a "hidden" file, Jupyter Lab hides it by default so your workspace looks clean. If you ever want to see it or edit it manually:
+Look at the very top menu bar in Jupyter Lab.
+Click on View.
+Check the box that says Show Hidden Files.
+Now you will see your .env file sitting right there in your file list
+or
+In the file browser on the left sidebar:
+Right-click in the empty space of the file list
+See if there's an option called "Show Hidden Files" in the context menu
+or
+Inside your ubuntu terminal, navigate to your folder and run 
+ls -la (to list all the files)
+
+Install support for Anthropic
+---------------------------
+Install required packages 
+Inside a notebook cell 
+!uv add python-dotenv
+!uv add Anthropic
+and run it
+
