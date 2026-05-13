@@ -1,0 +1,98 @@
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+skills
+
+.claude/skills/pr-review(skill folder) >> SKILL.md(skill file)
+
+**************Example skill file**************************
+
+---
+name:
+description:
+---
+
+Instructions in MD format
+
+
+***********************************************************
+
+home/.claude/skills  --? personal for across projects
+root/.calude/skills  --> specific for a project
+
+Ensure in your prompt you write matching text with the description of the skills
+
+
+
+role
+context
+output
+
+
+skills fields
+-------------
+name - letters, numbers, - only, max 64 and should match the dir name
+description - max 1024 char - should say what should claude do and when to use it
+allowed-tools - as the name suggests
+model - as the name suggests 
+
+Progression disclosure (load content as needed)
+try and keep SKILLS.md under 500 lines
+use scripts/, resources/, /assets/ for additional information 
+
+
+Skills priority 
+1 Enterprise              inside managed-settings.json
+2 Personal                root/.claude/skills
+3 Project                 projectroot/.claude/skills
+4 Plugins                 projectroot/.claude-plugins/skills
+
+
+restart claude after any changes to skills
+
+Claude loads only skill names and descriptions at startup, then matches incoming requests against those descriptions using semantic matching
+You get a confirmation prompt before Claude loads the full skill content into context
+
+
+skills.md vs claude.md
+
+claude.md is a part of every conversation            --> use for project wide standards
+skills.md loads when needed based on description     --> for task specific expertise
+
+
+skills.md vs subagent
+subagent is to delegate task and has a separate context
+subagent don't automatically skills
+built in agents (like explore, plan and verify) cant access skills at all. Only custom subagents can access skills and only when you list them
+when you create a subagent you need to define a field skills and list the skills there
+
+
+skills.md vs hooks
+hooks for automated operation before and after claude performes an action
+
+skills.md vs mcp 
+mcp provides external tools
+
+
+**********Sharing skills***************
+commit and share via git repos
+via plugins
+enterprise level
+***************************************
+
+(((((When skills don't work)))))
+
+don't load       --> Start with the skills validator tool — it catches structural problems before you spend time debugging other things. Installation steps
+                     vary by operating system, but using uv is the easiest way to get it set up quickly.
+don't trigger    --> check the description
+don't load       --> check the skill name matches the dir name
+don't run        --> check permissions
+don't appear     --> clear cache and restart claude
+
+Quick Troubleshooting Checklist
+Not triggering? Improve your description and add trigger phrases.
+Not loading? Check your path, file name, and YAML syntax.
+Wrong skill used? Make descriptions more distinct from each other.
+Being shadowed? Check the priority hierarchy and rename if needed.
+Plugin skills missing? Clear cache and reinstall.
+Runtime failure? Check dependencies, permissions, and paths.
+
