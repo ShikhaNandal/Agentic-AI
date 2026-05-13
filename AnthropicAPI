@@ -1,0 +1,68 @@
+user messages chatbot >>> chatbot sends requests to the server >>> server will send the request to Anthropic API
+
+Every interaction with Claude follows a predictable pattern with five distinct phases:
+1. Client's request to server
+2. Server's request to Anthropic API
+3. Model processing
+4. Anthropic API's response to server
+5. Server's Response to client.
+
+Point to note
+Never make requests to the Anthropic API directly from client-side code because API requests require a secret API key for authentication and Exposing this key in client code creates a serious security vulnerability.
+Instead, your web or mobile app sends requests to your own server, which then communicates with the Anthropic API using the securely stored key.
+
+Working with Anthropic API
+--------------------------
+How does server communicates with Anthropic API:
+You can use either an official SDK (published by Anthropic) (Anthropic provides SDKs for Python, TypeScript, JavaScript, Go, and Ruby.)
+Or make plain HTTP requests. 
+
+Every request must include these 4 essential fields:
+-------------------------------------------------------
+API Key - Identifies your request to Anthropic
+Model - Name of the model to use (like "claude-3-sonnet")
+Messages - List containing the user's input text
+Max Tokens - Limit for how many tokens Claude can generate
+
+
+Anthropic API working - Text generation
+-----------------------------------------
+Text generation process by Anthropic API 
+Tokenization                  --> User text is broken down into tokens (lets say one word one token)
+Embedding                     --> Embedding is generated for each token (multiple possible meanings for each token)
+Contextualization             --> Embedding is refined and adjusted according to the surrounding embeddings to come up with 
+                                  the most relevant sense/meaning in current context (based on its surrounding words). 
+                                  Based on the final embedding adjustment, there are probability assigned to each possible next word and sent to output
+                                  layer. The output layer selects the probable words based on both probability and randomness and add it to the embeddings
+                       
+Generation                    --> This process repeats itself. The model will pause after generating each output token
+                                  Then check - if we have reached a natural end of the response which is EOS (End of sequence token) 
+                                  or the max token limit has reached
+
+Output message will contain:
+-------------------------------
+Message: generated response text 
+Usage: Number of input or output token
+Stop Reason: EOS or max token limit reached or other that we will see in the topics later 
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+Generate Anthropic API Key 
+------------------------------
+Generate Key here :
+https://console.anthropic.com/
+Add your organisation 
+Once added, create a new key
+
+Key Name
+xxxx
+
+Key Value
+xxxx
+
+%%writefile .env
+ANTHROPIC_API_KEY="xxxxx"
+
+Copy the key and hold onto it. This key will only be displayed once, so make sure you copy it!
+If you accidentally close the window, delete the old key and generate it again.
