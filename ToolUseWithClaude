@@ -1,0 +1,147 @@
+
+Tools allow Claude to access information from the outside world, extending its capabilities beyond what it learned during training. By default, Claude only knows information from its training data and can't access current events, real-time data, or external systems. Tool use solves this limitation by creating a structured way for Claude to request and receive fresh information.
+
+How to create and use a tool
+
+1. write a tool function 
+for example 
+
+get_current_date (in this function you will fetch the current date)
+
+2. write a tool schema for the tool function
+JSON schema tells Claude what arguments your function expects and how to use it. 
+This schema acts as documentation that Claude reads to understand when and how to call your tools.
+
+
+def get_current_datetime(date_format="%Y-%m-%d %H:%M:%S"):
+    if not date_format:
+        raise ValueError("date_format cannot be empty")
+    return datetime.now().strftime(date_format)
+
+get_current_datetime_schema = {
+    "name": "get_current_datetime",
+    "description": "Returns the current date and time formatted according to the specified format",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "date_format": {
+                "type": "string",
+                "description": "A string specifying the format of the returned datetime. Uses Python's strftime format codes.",
+                "default": "%Y-%m-%d %H:%M:%S"
+            }
+        },
+        "required": ["date_format"]
+    }
+}
+
+you can ask claude to generate the tool use schema for a function 
+give claude this prompt:
+"write a valid JSON schema for the purposes of tool calling for this function.
+Follow the best practices listed in the attached documentation.
+<function>
+add your function here
+</function>
+
+paste the content of anthropic page - tool use with claude for teh best practices
+
+
+Adding Type Safety
+For better type checking, import and use the ToolParam type from the Anthropic library:
+
+from anthropic.types import ToolParam
+
+get_current_datetime_schema = ToolParam({
+    "name": "get_current_datetime",
+    "description": "Returns the current date and time formatted according to the specified format",
+    # ... rest of schema
+})
+
+
+3. Once tool function and schema are in place, pass the schema name it in the message parameter tools
+more than one tools can be added to the tools parameter 
+complete code
+-------------
+#Load env Variables
+from dotenv import load_dotenv
+load_dotenv()
+#create API client
+from anthropic import Anthropic
+client = Anthropic()
+#import json
+import json
+#Import tool param
+from anthropic.types import ToolParam
+#define model
+model= "claude-sonnet-4-0" 
+
+#define helper functions
+#user method function
+def add_user_message(messages, text):
+    user_message = {
+        "role" : "user",
+        "content": text
+    }
+
+    messages.append(user_message)
+
+#assistent method function
+def add_assistant_message(messages, text):
+    assistant_message = {
+        "role" : "assistant",
+        "content": text
+    }
+
+    messages.append(assistant_message)
+
+#chat message
+def chat(messages, system=None, temperature=1.0, stop_sequences=[]):
+    params={
+        "model": model,
+        "max_tokens": 1000,
+        "messages": messages,
+        "temperature": temperature,
+    }
+
+    if system:
+        params["system"]=system
+    if stop_sequences:
+        params["stop_sequences"]=stop_sequences
+        
+    answer = client.messages.create(**params)
+
+    return answer.content[0].text
+
+#Tool function to get current date time 
+def get_current_datetime(date_format="%Y-%m-%d %H:%M:%S"):
+    if not date_format:
+        raise ValueError("date_format cannot be empty")
+    return datetime.now().strftime(date_format)
+
+get_current_datetime_schema = ToolParam({
+    "name": "get_current_datetime",
+    "description": "Returns the current date and time formatted according to the specified format",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "date_format": {
+                "type": "string",
+                "description": "A string specifying the format of the returned datetime. Uses Python's strftime format codes.",
+                "default": "%Y-%m-%d %H:%M:%S"
+            }
+        },
+        "required": ["date_format"]
+    }
+})
+ 
+#main logic
+messages = []
+add_user_message(messages, "What is the exact time, formatted as HH:MM:SS?")
+
+response = client.messages.create(
+    model=model,
+    max_tokens=1000,
+    messages=messages,
+    tools=[get_current_datetime_schema],
+)
+
+response
