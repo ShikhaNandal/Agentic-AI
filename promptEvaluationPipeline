@@ -1,0 +1,289 @@
+Prompt Engineering vs Prompt Evaluation
+Prompt engineering gives you techniques for writing better prompts. It is your toolkit for crafting effective prompts. It includes techniques like:
+Multishot prompting
+Structuring with XML tags
+Many other best practices
+These techniques help Claude understand exactly what you're asking for and how you want it to respond.
+
+Prompt evaluation takes a different approach. Instead of focusing on how to write prompts, it's about measuring their effectiveness 
+(measure how well those prompts actually work) through automated testing. You can:
+Test against expected answers
+Compare different versions of the same prompt
+Review outputs for errors
+
+Draft a prompt 
+---------------
+Option 1: Test the prompt once and decide it's good enough. 
+          This carries a significant risk of breaking in production when users provide unexpected inputs.
+Option 2: Test the prompt a few times and tweak it to handle a corner case or two. 
+          While better than option 1, users will often provide very unexpected outputs that you haven't considered.
+Option 3: Run the prompt through an evaluation pipeline to score it, then iterate on the prompt based on objective metrics. 
+          This approach requires more work and cost, but gives you much more confidence in your prompt's reliability.
+
+Prompt evaluation workflow
+---------------------------
+Step 1: Draft a Prompt                for eg : Please answer user's question
+Step 2: Create an Eval Dataset        for eg : list of questions   (You can assemble these datasets by hand or use Claude to generate them for you.)
+                                      For this example, our dataset includes three questions:
+                                      "What's 2+2?"
+                                      "How do I make oatmeal?"
+                                      "How far away is the Moon?"   
+Step 3: Feed Through Claude
+Step 4: Feed claude answers Through a Grader to get a score for each answer and calculate an average score for the prompt
+Step 5: Change Prompt to improve and Repeat
+
+Prompt Scoring
+
+
+creating an eval dataset using model
+----------------------------------------
+#Load env Variables
+from dotenv import load_dotenv
+load_dotenv()
+#create API client
+from anthropic import Anthropic
+client = Anthropic()
+#import json
+import json
+#define model
+model= "claude-sonnet-4-0" 
+
+#define helper functions
+#user method function
+def add_user_message(messages, text):
+    user_message = {
+        "role" : "user",
+        "content": text
+    }
+
+    messages.append(user_message)
+
+#assistent method function
+def add_assistant_message(messages, text):
+    assistant_message = {
+        "role" : "assistant",
+        "content": text
+    }
+
+    messages.append(assistant_message)
+
+#chat message
+def chat(messages, system=None, temperature=1.0, stop_sequences=[]):
+    params={
+        "model": model,
+        "max_tokens": 1000,
+        "messages": messages,
+        "temperature": temperature,
+    }
+
+    if system:
+        params["system"]=system
+    if stop_sequences:
+        params["stop_sequences"]=stop_sequences
+        
+    answer = client.messages.create(**params)
+
+    return answer.content[0].text
+
+#generate dataset function
+def generate_dataset():
+    prompt = """
+Generate an evaluation dataset for a prompt evaluation. The dataset will be used to evaluate prompts that generate Python, JSON, or Regex specifically for AWS-related tasks. Generate an array of JSON objects, each representing task that requires Python, JSON, or a Regex to complete.
+
+Example output:
+```json
+[
+  {
+    "task": "Description of task",
+  },
+  ...additional
+]
+```
+
+* Focus on tasks that can be solved by writing a single Python function, a single JSON object, or a single regex
+* Focus on tasks that do not require writing much code
+
+Please generate 3 objects.
+"""
+
+    messages=[]
+
+    add_user_message(messages, prompt)
+    add_assistant_message(messages, "```json")
+    text = chat(messages, stop_sequences=["```"])
+    return json.loads(text)
+
+#main logic
+result = generate_dataset()
+result
+
+
+#saving the dataset
+with open('dataset.json', 'w') as f:
+    json.dump(result, f, indent=2)
+
+
+Running the eval
+---------------------
+#create the prompt for the use case and send the message to the chatbot
+def run_testCase_prompt(test_case):
+    prompt = f""" Please solve the following task: {test_case["task"]}"""
+    messages=[]
+    add_user_message(messages, prompt)
+    result = chat(messages)
+    return result
+
+#runs the test case and grades teh output
+def run_testCase_and_grader(test_case):
+    result = run_testCase_prompt(test_case)
+
+    #add code to add score
+    score = 10                    ----> hard coded at the moment, can use model or code grader here or human
+    return {"output": result,
+            "test_case": test_case,
+            "score": score
+           }
+           
+#Eval pipeline main function that runs the pipeline for every test case, gathers the results
+def run_eval(dataset):
+    final_result = []
+    for test_case in dataset:
+        result = run_testCase_and_grader(test_case)
+        final_result.append(result)
+
+    return final_result
+
+#Main logic open file and run the eval pipeline
+with open("dataset.json", "r") as f:
+    dataset = json.load(f)
+
+results = run_eval(dataset)
+
+print(json.dumps(results, indent=2))
+
+Grader
+----------
+There are three main approaches to grading model outputs:
+
+Code graders - Programmatically evaluate outputs using custom logic - need to implement logic 
+Model graders - Use another AI model to assess the quality
+Human graders - Have people manually review and score outputs
+
+Code Graders
+Code graders let you implement any programmatic check you can imagine. Common uses include:
+
+Checking output length
+Verifying output does/doesn't have certain words
+Syntax validation for JSON, Python, or regex
+Readability scores
+The only requirement is that your code returns some usable signal - usually a number between 1 and 10.
+
+Model Graders
+Model graders feed your original output into another API call for evaluation. This approach offers tremendous flexibility for assessing:
+
+Response quality
+Quality of instruction following
+Completeness
+Helpfulness
+Safety
+Human Graders
+Human graders provide the most flexibility but are time-consuming and tedious. They're useful for evaluating:
+
+General response quality
+Comprehensiveness
+Depth
+Conciseness
+Relevance
+
+def run_testCase_prompt(test_case):
+    prompt = f""" Please solve the following task: {test_case["task"]}"""
+    messages=[]
+    add_user_message(messages, prompt)
+    result = chat(messages)
+    return result
+
+def grade_by_model(test_case, output):
+    # Create evaluation prompt
+    eval_prompt = """
+    You are an expert code reviewer. your task is to evaluate this AI-generated solution.
+
+    original task:
+    <task>
+    Task: {test_case["task"]}
+    </task>
+    <solution>
+    Solution: {output}
+    </solution>
+
+    Output format
+    Provide your evaluation as a structured JSON object with:
+    - "strengths": An array of 1-3 key strengths
+    - "weaknesses": An array of 1-3 key areas for improvement  
+    - "reasoning": A concise explanation of your assessment
+    - "score": A number between 1-10
+
+    Respond with json. Keep your reasons concise and direct.
+    Example response shape:
+    {{
+        "strengths": string[],
+        "weakensses": string[]
+        "reasoning": string,
+        "score": number
+    }}
+    """
+    
+    messages = []
+    add_user_message(messages, eval_prompt)
+    add_assistant_message(messages, "```json")
+    
+    eval_text = chat(messages, stop_sequences=["```"])
+    return json.loads(eval_text)
+
+def run_testCase_and_grader(test_case):
+    result = run_testCase_prompt(test_case)
+
+    #add code to add score
+    #score = 10
+    eval_text = grade_by_model(test_case, result)
+    score = eval_text["score"]
+    reasoning = eval_text["reasoning"]
+    
+    return {"output": result,
+            "test_case": test_case,
+            "score": score,
+            "reasoning": reasoning
+           }
+
+def run_eval(dataset):
+    final_result = []
+    for test_case in dataset:
+        result = run_testCase_and_grader(test_case)
+        final_result.append(result)
+
+    average_score = mean([result["score"] for result in final_results])
+    print(f"Average score: {average_score}")
+
+    return final_result
+
+
+from statistics import mean
+
+with open("dataset.json", "r") as f:
+    dataset = json.load(f)
+
+results = run_eval(dataset)
+
+print(json.dumps(results, indent=2))
+
+
+
+
+
+
+
+Prompt Engineering
+-------------------
+Be clear and direct
+Be specific - use guidelines
+Structure with XML tags
+Provide examples
